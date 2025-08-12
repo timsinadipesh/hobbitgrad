@@ -5,48 +5,72 @@ np.random.seed(42)
 def relu(x):
     return np.maximum(x, 0)
 
-class Layer:
-    def __init__(self, input_size, output_size):
-        self.W = np.random.rand(input_size, output_size)
-        self.b = np.zeros(output_size)
-        print("self.W.shape, self.b.shape:", self.W.shape, self.b.shape)
+class Neuron:
+    def __init__(self, input_size):
+        self.w = np.random.rand(input_size).astype(np.float32)
+        self.b = np.zeros(1, dtype=np.float32)
 
     def forward(self, x):
-        self.x = x
-        print("x.shape", x.shape)
-        print("self.W.shape, self.b.shape:", self.W.shape, self.b.shape)
-        print()
-        return x @ self.W + self.b
+        # print("    x.shape", x.shape)
+        neuron_out = x @ self.w + self.b
+        # print("    neuron_out.shape, neuron_out:", neuron_out.shape, neuron_out)
+        return neuron_out
     
-    def backward(self, dout):
-        ...
+    def __repr__(self):
+        return f"\n    Neuron(w.shape={self.w.shape}, b.shape={self.b.shape}, dtype={self.w.dtype})"
+
+class Layer:
+    def __init__(self, input_size, output_size):
+        self.neurons = [Neuron(input_size) for i in range(output_size)]
+
+    def forward(self, x):
+        layer_outputs = [neuron.forward(x) for neuron in self.neurons]
+        return np.column_stack(layer_outputs)
+    
+    def __repr__(self):
+        return f"\n  Layer(num_neurons={len(self.neurons)}, neurons={self.neurons})\n"
+
 
 class Model:
-    def __init__(self, layers):
-        layers.append(1)
-        self.layers = [Layer(layers[i], layers[i+1]) for i in range(len(layers) - 1)]
-        print("len(self.layers):", len(self.layers))
+    def __init__(self, layer_sizes):
+        self.layers = [Layer(layer_sizes[i], layer_sizes[i+1]) for i in range(len(layer_sizes) - 1)]
 
-    def forward(self, data):
-        for layer in self.layers:
-            print("data.shape:",data.shape)
-            data = layer.forward(data)
-        print("data.shape:",data.shape)
-        print(data)       
+    def forward(self, x):
+        for i in range(len(self.layers)):
+            # print(f"layer {i+1}")
+            x = self.layers[i].forward(x)
+        return x
+    
+    def __repr__(self):
+        input_size = self.layers[0].neurons[0].w.shape[0]
+        output_size = len(self.layers[-1].neurons)
+        return f"Model(inputs={input_size}, num_layers={len(self.layers)}, outputs={output_size}, layers={self.layers})"
+
+
+def mse(y, ypred):
+    mse = np.mean((y - ypred)**2)
+    return mse
 
 m = 10
-input_dim = 3
+features = 3
 
-X = np.random.rand(m, input_dim)
-print("X.shape:", X.shape)
+x = np.random.rand(m, features)
 
 true_weights = np.array([3.0, -1.0, 6.5])
 true_bias = 3.0
 
-y = X @ true_weights + true_bias + np.random.randn(m) * 0.1
+y = x @ true_weights + true_bias + np.random.randn(m) * 0.1
 y = y.reshape(-1, 1)
-print("y.shape:", y.shape)
+print("y:\n", y)
 
-layers = [input_dim, 2 * input_dim, input_dim]
-model = Model(layers)
-model.forward(X)
+layer_sizes = [features, 2 * features, features, 1]
+model = Model(layer_sizes)
+# print(model)
+
+ypred = model.forward(x)
+print("ypred:\n", ypred)
+
+mse_loss = mse(y, ypred)
+print("mse loss:", mse_loss)
+
+# backward = model.backward()
